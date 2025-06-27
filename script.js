@@ -51,7 +51,7 @@ const imageUrls = [
   'source/IMG_20250526_175802_785.jpg'
 ];
 
-for (let i = 0; i < 100; i++) {
+for (let i = 0; i < 150; i++) {
   const image = imageUrls[i % imageUrls.length];
   loader.load(image, (texture) => {
     const material = new THREE.MeshBasicMaterial({
@@ -77,8 +77,8 @@ for (let i = 0; i < 100; i++) {
 
 // --- Timer Canvas on Top ---
 const dateCanvas = document.createElement('canvas');
-dateCanvas.width = 2048;
-dateCanvas.height = 250;
+dateCanvas.width = 2028;
+dateCanvas.height = 240;
 const dateCtx = dateCanvas.getContext('2d');
 const dateTexture = new THREE.CanvasTexture(dateCanvas);
 
@@ -105,7 +105,7 @@ const lyricMaterial = new THREE.MeshBasicMaterial({
   side: THREE.DoubleSide,
 });
 
-const lyricPlane = new THREE.Mesh(new THREE.PlaneGeometry(32, 5), lyricMaterial);
+const lyricPlane = new THREE.Mesh(new THREE.PlaneGeometry(32, 2), lyricMaterial);
 lyricPlane.position.set(0, -9, 0);
 lyricPlane.scale.set(1.5, 1.5, 1.5);
 marsGroup.add(lyricPlane);
