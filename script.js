@@ -25,7 +25,7 @@ const marsTextureUrl = 'source/8k_earth_nightmap.jpg';
 const marsTexture = loader.load(marsTextureUrl);
 
 // Create Mars sphere
-const sphereGeometry = new THREE.SphereGeometry(10, 64, 64);
+const sphereGeometry = new THREE.SphereGeometry(5, 64, 64);
 const sphereMaterial = new THREE.MeshStandardMaterial({
   map: marsTexture,
   roughness: 1,
@@ -66,15 +66,15 @@ for (let i = 0; i < 100; i++) {
       side: THREE.DoubleSide,
       transparent: true,
     });
-    const geometry = new THREE.PlaneGeometry(2.5, 2.5);
+    const geometry = new THREE.PlaneGeometry(1.5, 1.5);
     const plane = new THREE.Mesh(geometry, material);
 
     const angle = i * 0.2;
-    const radius = 30 + i * 0.2;
+    const radius = 20 + i * 0.2;
     const armOffset = (Math.random() - 0.5) * 10;
 
     const x = Math.cos(angle) * radius + armOffset;
-    const y = (Math.random() - 0.5) * 10;
+    const y = (Math.random() - 0.5) * 5;
     const z = Math.sin(angle) * radius + armOffset;
 
     plane.position.set(x, y, z);
@@ -125,3 +125,21 @@ window.addEventListener('load', () => {
     document.addEventListener('click', resumePlayback);
   });
 });
+
+const starGeometry = new THREE.BufferGeometry();
+const starCount = 1000;
+
+const starPositions = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount * 3; i++) {
+  starPositions[i] = (Math.random() - 0.5) * 1000;
+}
+
+starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+
+const starMaterial = new THREE.PointsMaterial({
+  color: 0xffffff,
+  size: 0.8,
+});
+
+const stars = new THREE.Points(starGeometry, starMaterial);
+scene.add(stars);
