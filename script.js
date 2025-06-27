@@ -7,7 +7,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-camera.position.z = 50;
+camera.position.z = 100;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -21,7 +21,7 @@ const marsGroup = new THREE.Group();
 scene.add(marsGroup);
 
 // Load Mars texture
-const marsTextureUrl = 'source/8k_mars.jpg';
+const marsTextureUrl = 'source/8k_earth_nightmap.jpg';
 const marsTexture = loader.load(marsTextureUrl);
 
 // Create Mars sphere
@@ -58,7 +58,7 @@ const imageUrls = [
 ];
 
 // Load and scatter images in a spiral
-for (let i = 0; i < 300; i++) {
+for (let i = 0; i < 500; i++) {
   const image = imageUrls[i % imageUrls.length];
   loader.load(image, (texture) => {
     const material = new THREE.MeshBasicMaterial({
@@ -70,7 +70,7 @@ for (let i = 0; i < 300; i++) {
     const plane = new THREE.Mesh(geometry, material);
 
     const angle = i * 0.2;
-    const radius = 10 + i * 0.5;
+    const radius = 30 + i * 0.2;
     const armOffset = (Math.random() - 0.5) * 10;
 
     const x = Math.cos(angle) * radius + armOffset;
