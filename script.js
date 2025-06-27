@@ -7,7 +7,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-camera.position.z = 100;
+camera.position.z = 50;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -58,7 +58,7 @@ const imageUrls = [
 ];
 
 // Load and scatter images in a spiral
-for (let i = 0; i < 500; i++) {
+for (let i = 0; i < 200; i++) {
   const image = imageUrls[i % imageUrls.length];
   loader.load(image, (texture) => {
     const material = new THREE.MeshBasicMaterial({
