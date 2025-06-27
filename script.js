@@ -13,14 +13,43 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// Loading manager
+// --- LOADING STATE FLAGS ---
+let texturesLoaded = false;
+let audioLoaded = false;
+
+function tryHideSpinner() {
+  if (texturesLoaded && audioLoaded) {
+    const spinner = document.getElementById('loading-spinner');
+    if (spinner) spinner.style.display = 'none';
+  }
+}
+
+// Loading manager for all textures
 const loadingManager = new THREE.LoadingManager();
 loadingManager.onLoad = () => {
-  const spinner = document.getElementById('loading-spinner');
-  if (spinner) spinner.style.display = 'none';
+  texturesLoaded = true;
+  tryHideSpinner();
 };
 
 const loader = new THREE.TextureLoader(loadingManager);
+
+// Background music preload
+const bgMusic = new Audio('source/davi-VEED.mp3');
+bgMusic.loop = true;
+bgMusic.volume = 1.0;
+bgMusic.addEventListener('canplaythrough', () => {
+  audioLoaded = true;
+  tryHideSpinner();
+
+  bgMusic.play().catch(() => {
+    const resumePlayback = () => {
+      bgMusic.play().catch(console.warn);
+      document.removeEventListener('click', resumePlayback);
+    };
+    document.addEventListener('click', resumePlayback);
+  });
+});
+bgMusic.load();
 
 // Group for Earth and all children
 const marsGroup = new THREE.Group();
@@ -37,7 +66,7 @@ const sphereMaterial = new THREE.MeshStandardMaterial({
 const marsSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
 marsGroup.add(marsSphere);
 
-// --- Floating Images ---
+// Floating Images
 const imageUrls = [
   'source/IMG_20241102_153456.jpg',
   'source/IMG_20241102_153620.jpg',
@@ -75,45 +104,41 @@ for (let i = 0; i < 150; i++) {
   });
 }
 
-// --- Timer Canvas on Top ---
+// Timer Canvas
 const dateCanvas = document.createElement('canvas');
 dateCanvas.width = 2028;
 dateCanvas.height = 240;
 const dateCtx = dateCanvas.getContext('2d');
 const dateTexture = new THREE.CanvasTexture(dateCanvas);
-
 const dateMaterial = new THREE.MeshBasicMaterial({
   map: dateTexture,
   transparent: true,
   side: THREE.DoubleSide,
 });
-
 const datePlane = new THREE.Mesh(new THREE.PlaneGeometry(32, 7), dateMaterial);
 datePlane.position.set(0, 9, 0);
 marsGroup.add(datePlane);
 
-// --- Lyrics Canvas below Earth ---
+// Lyrics Canvas
 const lyricCanvas = document.createElement('canvas');
 lyricCanvas.width = 2048;
 lyricCanvas.height = 200;
 const lyricCtx = lyricCanvas.getContext('2d');
 const lyricTexture = new THREE.CanvasTexture(lyricCanvas);
-
 const lyricMaterial = new THREE.MeshBasicMaterial({
   map: lyricTexture,
   transparent: true,
   side: THREE.DoubleSide,
 });
-
 const lyricPlane = new THREE.Mesh(new THREE.PlaneGeometry(32, 2), lyricMaterial);
 lyricPlane.position.set(0, -9, 0);
 lyricPlane.scale.set(1.5, 1.5, 1.5);
 marsGroup.add(lyricPlane);
 
-// Lyrics sync data
+// Lyrics
 const lyrics = [
   { time: 1.44, text: "Watch the sun rise along the" },
-  { time: 4.56, text: "coast as we're both getting upp" },
+  { time: 4.56, text: "coast as we're both getting up" },
   { time: 10.88, text: "I can't describe what I'm feeling and all Ii" },
   { time: 17.44, text: "Know is we're going homee" },
   { time: 20.2, text: "So please don't let me goo" },
@@ -130,12 +155,10 @@ const lyrics = [
   { time: 62.42, text: "Me." },
   { time: 67.5, text: "" }
 ];
-
-// Calculate total duration of lyrics (last time)
 const lyricsTotalDuration = lyrics[lyrics.length - 1].time;
 
+// Timer logic
 const startDate = new Date('2024-08-28T00:00:00');
-
 function getElapsedTimeParts(start, end) {
   let years = end.getFullYear() - start.getFullYear();
   let months = end.getMonth() - start.getMonth();
@@ -143,34 +166,29 @@ function getElapsedTimeParts(start, end) {
   let hours = end.getHours() - start.getHours();
   let minutes = end.getMinutes() - start.getMinutes();
   let seconds = end.getSeconds() - start.getSeconds();
-
   if (seconds < 0) { seconds += 60; minutes--; }
   if (minutes < 0) { minutes += 60; hours--; }
   if (hours < 0) { hours += 24; days--; }
   if (days < 0) {
     const prevMonth = new Date(end.getFullYear(), end.getMonth(), 0);
-    days += prevMonth.getDate();
-    months--;
+    days += prevMonth.getDate(); months--;
   }
   if (months < 0) { months += 12; years--; }
   months += years * 12;
   return { months, days, hours, minutes, seconds };
 }
-
 function format12Hour(hours) {
   const ampm = hours >= 12 ? 'PM' : 'AM';
   let h = hours % 12;
   if (h === 0) h = 12;
   return { hour12: h, ampm };
 }
-
 function updateTimerTexture() {
   const now = new Date();
   const elapsed = getElapsedTimeParts(startDate, now);
   const { hour12, ampm } = format12Hour(elapsed.hours);
   const formatted = `${elapsed.months} month${elapsed.months !== 1 ? 's' : ''} ${elapsed.days} day${elapsed.days !== 1 ? 's' : ''} ` +
     `${String(hour12).padStart(2, '0')}:${String(elapsed.minutes).padStart(2, '0')}:${String(elapsed.seconds).padStart(2, '0')} ${ampm}`;
-
   dateCtx.clearRect(0, 0, dateCanvas.width, dateCanvas.height);
   dateCtx.shadowColor = 'rgba(0,0,0,0.6)';
   dateCtx.shadowBlur = 6;
@@ -182,13 +200,13 @@ function updateTimerTexture() {
   dateTexture.needsUpdate = true;
 }
 
-// Lighting
+// Lights
 scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 directionalLight.position.set(30, 50, 50);
 scene.add(directionalLight);
 
-// Star background
+// Stars
 const starGeometry = new THREE.BufferGeometry();
 const starCount = 1000;
 const starPositions = new Float32Array(starCount * 3);
@@ -200,10 +218,9 @@ const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.8 });
 const stars = new THREE.Points(starGeometry, starMaterial);
 scene.add(stars);
 
-// --- Shooting Stars ---
+// Shooting Stars
 const shootingStarCount = 5;
 const shootingStars = [];
-
 for (let i = 0; i < shootingStarCount; i++) {
   const star = new THREE.Mesh(
     new THREE.SphereGeometry(0.3, 8, 8),
@@ -212,99 +229,38 @@ for (let i = 0; i < shootingStarCount; i++) {
   star.visible = false;
   scene.add(star);
 
-  const trailMaterial = new THREE.LineBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0.8,
-  });
-  const trailGeometry = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(0, 0, 0),
-  ]);
-  const trail = new THREE.Line(trailGeometry, trailMaterial);
+  const trail = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
+  );
   trail.visible = false;
   scene.add(trail);
 
-  shootingStars.push({
-    star,
-    trail,
-    shooting: false,
-    shootingStart: 0,
-    startPos: new THREE.Vector3(),
-    endPos: new THREE.Vector3(),
-    duration: 0,
-  });
+  shootingStars.push({ star, trail, shooting: false, shootingStart: 0, startPos: new THREE.Vector3(), endPos: new THREE.Vector3(), duration: 0 });
 }
-
 function triggerShootingStar(index) {
-  const shootingStar = shootingStars[index];
-  shootingStar.shooting = true;
-  shootingStar.shootingStart = performance.now();
-  shootingStar.star.visible = true;
-  shootingStar.trail.visible = true;
+  const obj = shootingStars[index];
+  obj.shooting = true;
+  obj.shootingStart = performance.now();
+  obj.star.visible = obj.trail.visible = true;
 
   const radius = 250;
-
   const theta = Math.random() * 2 * Math.PI;
   const phi = Math.acos(2 * Math.random() - 1);
-
-  shootingStar.startPos.set(
-    radius * Math.sin(phi) * Math.cos(theta),
-    radius * Math.sin(phi) * Math.sin(theta),
-    radius * Math.cos(phi)
-  );
-
-  if (shootingStar.startPos.distanceTo(camera.position) < 50) {
-    shootingStar.startPos.multiplyScalar(1.5);
-  }
-
-  const direction = shootingStar.startPos.clone().negate().normalize();
-
-  const spreadAngle = 0.4;
-  const randomOffset = new THREE.Vector3(
-    (Math.random() - 0.5) * spreadAngle,
-    (Math.random() - 0.5) * spreadAngle,
-    (Math.random() - 0.5) * spreadAngle
-  );
-  direction.add(randomOffset).normalize();
-
-  const travelDistance = 150 + Math.random() * 150;
-
-  shootingStar.endPos.copy(shootingStar.startPos).add(direction.multiplyScalar(travelDistance));
-
-  shootingStar.duration = 1000 + Math.random() * 1000;
-
-  shootingStar.star.position.copy(shootingStar.startPos);
+  obj.startPos.set(radius * Math.sin(phi) * Math.cos(theta), radius * Math.sin(phi) * Math.sin(theta), radius * Math.cos(phi));
+  if (obj.startPos.distanceTo(camera.position) < 50) obj.startPos.multiplyScalar(1.5);
+  const direction = obj.startPos.clone().negate().normalize().add(new THREE.Vector3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4)).normalize();
+  obj.endPos.copy(obj.startPos).add(direction.multiplyScalar(150 + Math.random() * 150));
+  obj.duration = 1000 + Math.random() * 1000;
+  obj.star.position.copy(obj.startPos);
 }
-
-function scheduleNextShootingStar(index) {
-  const delay = 2000 + Math.random() * 6000;
+function scheduleNextShootingStar(i) {
   setTimeout(() => {
-    if (!shootingStars[index].shooting) {
-      triggerShootingStar(index);
-    }
-    scheduleNextShootingStar(index);
-  }, delay);
+    if (!shootingStars[i].shooting) triggerShootingStar(i);
+    scheduleNextShootingStar(i);
+  }, 2000 + Math.random() * 6000);
 }
-
-for (let i = 0; i < shootingStarCount; i++) {
-  scheduleNextShootingStar(i);
-}
-
-// Background Music
-const bgMusic = new Audio('source/davi-VEED.mp3');
-bgMusic.loop = true;
-bgMusic.volume = 1.0;
-
-window.addEventListener('load', () => {
-  bgMusic.play().catch(() => {
-    const resumePlayback = () => {
-      bgMusic.play().catch(console.warn);
-      document.removeEventListener('click', resumePlayback);
-    };
-    document.addEventListener('click', resumePlayback);
-  });
-});
+for (let i = 0; i < shootingStarCount; i++) scheduleNextShootingStar(i);
 
 // Orbit controls
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -313,46 +269,35 @@ controls.maxDistance = 80;
 controls.maxPolarAngle = Math.PI / 1.6;
 
 let lastTimerUpdate = 0;
-
-// --- Typewriter lyric effect variables ---
 let currentTypedLength = 0;
 let currentLineStartTime = 0;
 let currentLineDuration = 0;
 let currentLyricText = '';
-
 function startNewLine(text, duration, timestamp) {
   currentLyricText = text;
   currentTypedLength = 0;
   currentLineStartTime = timestamp;
   currentLineDuration = duration;
 }
-
 function updateLyricsCanvas() {
   const timestamp = performance.now();
-
   lyricCtx.clearRect(0, 0, lyricCanvas.width, lyricCanvas.height);
-
   const elapsed = timestamp - currentLineStartTime;
   const letterInterval = currentLineDuration / (currentLyricText.length || 1);
   currentTypedLength = Math.min(currentLyricText.length, Math.floor(elapsed / letterInterval));
-
   const textToDraw = currentLyricText.substring(0, currentTypedLength);
-
   lyricCtx.shadowColor = 'black';
   lyricCtx.shadowBlur = 8;
   lyricCtx.fillStyle = 'white';
   lyricCtx.font = 'bold 80px Arial';
   lyricCtx.textAlign = 'center';
   lyricCtx.textBaseline = 'middle';
-
   lyricCtx.fillText(textToDraw, lyricCanvas.width / 2, lyricCanvas.height / 2);
-
   lyricTexture.needsUpdate = true;
 }
 
 function animate(time = 0) {
   requestAnimationFrame(animate);
-
   marsGroup.rotation.y += 0.001;
   controls.update();
 
@@ -365,10 +310,7 @@ function animate(time = 0) {
   lyricPlane.lookAt(camera.position);
 
   if (!bgMusic.paused) {
-    // Loop time based on lyrics total duration
-    let loopedTime = bgMusic.currentTime % lyricsTotalDuration;
-
-    // Initialize lyric index if not yet
+    const loopedTime = bgMusic.currentTime % lyricsTotalDuration;
     if (lyricPlane.userData.currentIndex === undefined) {
       lyricPlane.userData.currentIndex = 0;
       const nextTime = lyrics[1] ? lyrics[1].time : loopedTime + 2;
@@ -376,7 +318,6 @@ function animate(time = 0) {
       startNewLine(lyrics[0].text, duration, performance.now());
     }
 
-    // Reset to start if loopedTime near zero and index not zero
     if (loopedTime < 0.2 && lyricPlane.userData.currentIndex !== 0) {
       lyricPlane.userData.currentIndex = 0;
       const nextTime = lyrics[1] ? lyrics[1].time : loopedTime + 2;
@@ -385,8 +326,6 @@ function animate(time = 0) {
     }
 
     let currentIndex = lyricPlane.userData.currentIndex;
-
-    // Advance index while loopedTime passes next lyric time
     while (currentIndex + 1 < lyrics.length && loopedTime >= lyrics[currentIndex + 1].time) {
       currentIndex++;
     }
@@ -401,10 +340,8 @@ function animate(time = 0) {
 
   updateLyricsCanvas();
 
-  // Update shooting stars
   const now = performance.now();
   const cameraDistance = camera.position.length();
-
   shootingStars.forEach((obj) => {
     if (obj.shooting) {
       const elapsed = now - obj.shootingStart;
@@ -416,26 +353,16 @@ function animate(time = 0) {
       } else {
         const currentPos = new THREE.Vector3().lerpVectors(obj.startPos, obj.endPos, t);
         obj.star.position.copy(currentPos);
-
         const scale = THREE.MathUtils.clamp(cameraDistance / 30, 0.5, 3);
         obj.star.scale.set(scale, scale, scale);
-
-        const trailEnd = currentPos.clone();
         const trailStart = currentPos.clone().lerp(obj.startPos, 0.3);
-        obj.trail.geometry.setFromPoints([trailStart, trailEnd]);
-
-        obj.trail.visible = true;
-        obj.star.visible = true;
+        obj.trail.geometry.setFromPoints([trailStart, currentPos]);
       }
-    } else {
-      obj.star.visible = false;
-      obj.trail.visible = false;
     }
   });
 
   renderer.render(scene, camera);
 }
-
 animate();
 
 window.addEventListener('resize', () => {
