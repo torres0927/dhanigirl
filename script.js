@@ -58,7 +58,7 @@ const imageUrls = [
 ];
 
 // Load and scatter images in a spiral
-for (let i = 0; i < 200; i++) {
+for (let i = 0; i < 100; i++) {
   const image = imageUrls[i % imageUrls.length];
   loader.load(image, (texture) => {
     const material = new THREE.MeshBasicMaterial({
