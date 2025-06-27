@@ -1,211 +1,445 @@
-// Solar System 3D Scene with Planets, Orbiting Earth Images, Shooting Stars, and Music
-
-// --- Basic Setup ---
+// Scene setup
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 100;
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+
+const camera = new THREE.PerspectiveCamera(
+  90,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+camera.position.z = 35;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// --- Texture Loader ---
-const loader = new THREE.TextureLoader();
+// Loading manager
+const loadingManager = new THREE.LoadingManager();
+loadingManager.onLoad = () => {
+  const spinner = document.getElementById('loading-spinner');
+  if (spinner) spinner.style.display = 'none';
+};
 
-// --- Lighting ---
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(50, 50, 50);
-scene.add(directionalLight);
+const loader = new THREE.TextureLoader(loadingManager);
 
-// --- Sun ---
-const sun = new THREE.Mesh(
-  new THREE.SphereGeometry(10, 64, 64),
-  new THREE.MeshBasicMaterial({ color: 0xffff00, emissive: 0xffcc00 })
-);
-scene.add(sun);
+// Group for Earth and all children
+const marsGroup = new THREE.Group();
+scene.add(marsGroup);
 
-// --- Planets ---
-const planetsData = [
-  { name: "Mercury", radius: 22, size: 1.2, speed: 0.02, texture: 'source/2k_mercury.jpg' },
-  { name: "Venus", radius: 30, size: 1.5, speed: 0.015, texture: 'source/2k_venus_surface.jpg' },
-  { name: "Earth", radius: 40, size: 5, speed: 0.01, texture: 'source/2k_earth_nightmap.jpg' },
-  { name: "Mars", radius: 50, size: 3.5, speed: 0.007, texture: 'source/2k_mars.jpg' },
-  { name: "Jupiter", radius: 65, size: 7, speed: 0.004, texture: 'source/2k_jupiter.jpg' },
-  { name: "Saturn", radius: 80, size: 6, speed: 0.003, texture: 'source/2k_saturn.jpg' },
-];
-
-const planetMeshes = {};
-const orbitGroups = [];
-
-planetsData.forEach(data => {
-  const orbitGroup = new THREE.Group();
-  scene.add(orbitGroup);
-
-  const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(data.size, 32, 32),
-    new THREE.MeshStandardMaterial({
-      map: loader.load(
-        data.texture,
-        undefined,
-        undefined,
-        err => console.error('Failed to load planet texture:', data.texture, err)
-      )
-    })
-  );
-  mesh.position.x = data.radius;
-  orbitGroup.add(mesh);
-
-  planetMeshes[data.name] = mesh;
-  orbitGroups.push({ group: orbitGroup, speed: data.speed });
+// Earth sphere
+const marsTexture = loader.load('source/2k_earth_nightmap.jpg');
+const sphereGeometry = new THREE.SphereGeometry(5, 64, 64);
+const sphereMaterial = new THREE.MeshStandardMaterial({
+  map: marsTexture,
+  roughness: 1,
+  metalness: 0,
 });
+const marsSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+marsGroup.add(marsSphere);
 
-// --- Orbiting Images around Earth ---
-const earth = planetMeshes['Earth'];
-const earthImageGroup = new THREE.Group();
-earth.add(earthImageGroup);
-
+// --- Floating Images ---
 const imageUrls = [
-  'source/IMG_20241102_153456.jpg', 'source/IMG_20241102_153620.jpg',
-  'source/IMG_20250123_172909_486.jpg', 'source/IMG_20250123_172910_847.jpg',
-  'source/IMG_20250313_191743_695.jpg', 'source/IMG_20250313_191743_828.jpg',
-  'source/IMG_20250326_165727_630.jpg', 'source/IMG_20250326_165727_714.jpg',
-  'source/IMG_20250526_175802_636.jpg', 'source/IMG_20250526_175802_785.jpg'
+  'source/IMG_20241102_153456.jpg',
+  'source/IMG_20241102_153620.jpg',
+  'source/IMG_20250123_172909_486.jpg',
+  'source/IMG_20250123_172910_847.jpg',
+  'source/IMG_20250313_191743_695.jpg',
+  'source/IMG_20250313_191743_828.jpg',
+  'source/IMG_20250326_165727_630.jpg',
+  'source/IMG_20250326_165727_714.jpg',
+  'source/IMG_20250526_175802_636.jpg',
+  'source/IMG_20250526_175802_785.jpg'
 ];
 
-for (let i = 0; i < 50; i++) {
+for (let i = 0; i < 100; i++) {
   const image = imageUrls[i % imageUrls.length];
-  loader.load(
-    image,
-    texture => {
-      const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide, transparent: true });
-      const geometry = new THREE.PlaneGeometry(1.5, 1.5);
-      const plane = new THREE.Mesh(geometry, material);
+  loader.load(image, (texture) => {
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      side: THREE.DoubleSide,
+      transparent: true,
+    });
+    const geometry = new THREE.PlaneGeometry(1.5, 1.5);
+    const plane = new THREE.Mesh(geometry, material);
 
-      const radius = 10 + Math.random() * 8;
-      const angle = Math.random() * Math.PI * 2;
+    const angle = i * 0.5;
+    const radius = 20 + i * 0.1;
+    const armOffset = (Math.random() - 0.5) * 10;
+    const x = Math.cos(angle) * radius + armOffset;
+    const y = (Math.random() - 0.5) * 5;
+    const z = Math.sin(angle) * radius + armOffset;
 
-      plane.userData = {
-        orbitRadius: radius,
-        orbitAngle: angle,
-        orbitSpeed: 0.005 + Math.random() * 0.015,
-        height: (Math.random() - 0.5) * 6
-      };
-
-      plane.position.set(
-        Math.cos(angle) * radius,
-        plane.userData.height,
-        Math.sin(angle) * radius
-      );
-
-      earthImageGroup.add(plane);
-    },
-    undefined,
-    err => console.error('Failed to load image texture:', image, err)
-  );
+    plane.position.set(x, y, z);
+    plane.lookAt(marsSphere.position);
+    marsGroup.add(plane);
+  });
 }
 
+// --- Timer Canvas on Top ---
+const dateCanvas = document.createElement('canvas');
+dateCanvas.width = 2048;
+dateCanvas.height = 250;
+const dateCtx = dateCanvas.getContext('2d');
+const dateTexture = new THREE.CanvasTexture(dateCanvas);
+
+const dateMaterial = new THREE.MeshBasicMaterial({
+  map: dateTexture,
+  transparent: true,
+  side: THREE.DoubleSide,
+});
+
+const datePlane = new THREE.Mesh(new THREE.PlaneGeometry(32, 7), dateMaterial);
+datePlane.position.set(0, 9, 0);
+marsGroup.add(datePlane);
+
+// --- Lyrics Canvas below Earth ---
+const lyricCanvas = document.createElement('canvas');
+lyricCanvas.width = 2048;
+lyricCanvas.height = 200;
+const lyricCtx = lyricCanvas.getContext('2d');
+const lyricTexture = new THREE.CanvasTexture(lyricCanvas);
+
+const lyricMaterial = new THREE.MeshBasicMaterial({
+  map: lyricTexture,
+  transparent: true,
+  side: THREE.DoubleSide,
+});
+
+const lyricPlane = new THREE.Mesh(new THREE.PlaneGeometry(32, 5), lyricMaterial);
+lyricPlane.position.set(0, -9, 0);
+lyricPlane.scale.set(1.5, 1.5, 1.5);
+marsGroup.add(lyricPlane);
+
+// Lyrics sync data
+const lyrics = [
+  { time: 1.44, text: "Watch the sun rise along the" },
+  { time: 4.56, text: "coast as we're both getting upp" },
+  { time: 10.88, text: "I can't describe what I'm feeling and all Ii" },
+  { time: 17.44, text: "know is we're going homee" },
+  { time: 20.2, text: "so please don't let me goo" },
+  { time: 25.28, text: "don't let me goo" },
+  { time: 29.2, text: "and if it's rightt" },
+  { time: 32.46, text: "I don't care how long it takess" },
+  { time: 38.62, text: "as long as I'm with you I'vee" },
+  { time: 42.22, text: "got a smile on my facee" },
+  { time: 44.86, text: "Save your tears," },
+  { time: 49.38, text: "it'll be okayy" },
+  { time: 54.86, text: "All I knoww" },
+  { time: 58.46, text: "is you're heree" },
+  { time: 61.34, text: "withh" },
+  { time: 62.42, text: "me." },
+  { time: 67.5, text: "" }
+];
+
+// Calculate total duration of lyrics (last time)
+const lyricsTotalDuration = lyrics[lyrics.length - 1].time;
+
+const startDate = new Date('2024-08-28T00:00:00');
+
+function getElapsedTimeParts(start, end) {
+  let years = end.getFullYear() - start.getFullYear();
+  let months = end.getMonth() - start.getMonth();
+  let days = end.getDate() - start.getDate();
+  let hours = end.getHours() - start.getHours();
+  let minutes = end.getMinutes() - start.getMinutes();
+  let seconds = end.getSeconds() - start.getSeconds();
+
+  if (seconds < 0) { seconds += 60; minutes--; }
+  if (minutes < 0) { minutes += 60; hours--; }
+  if (hours < 0) { hours += 24; days--; }
+  if (days < 0) {
+    const prevMonth = new Date(end.getFullYear(), end.getMonth(), 0);
+    days += prevMonth.getDate();
+    months--;
+  }
+  if (months < 0) { months += 12; years--; }
+  months += years * 12;
+  return { months, days, hours, minutes, seconds };
+}
+
+function format12Hour(hours) {
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  let h = hours % 12;
+  if (h === 0) h = 12;
+  return { hour12: h, ampm };
+}
+
+function updateTimerTexture() {
+  const now = new Date();
+  const elapsed = getElapsedTimeParts(startDate, now);
+  const { hour12, ampm } = format12Hour(elapsed.hours);
+  const formatted = `${elapsed.months} month${elapsed.months !== 1 ? 's' : ''} ${elapsed.days} day${elapsed.days !== 1 ? 's' : ''} ` +
+    `${String(hour12).padStart(2, '0')}:${String(elapsed.minutes).padStart(2, '0')}:${String(elapsed.seconds).padStart(2, '0')} ${ampm}`;
+
+  dateCtx.clearRect(0, 0, dateCanvas.width, dateCanvas.height);
+  dateCtx.shadowColor = 'rgba(0,0,0,0.6)';
+  dateCtx.shadowBlur = 6;
+  dateCtx.fillStyle = 'white';
+  dateCtx.font = 'bold 100px Arial';
+  dateCtx.textAlign = 'center';
+  dateCtx.textBaseline = 'middle';
+  dateCtx.fillText(formatted, dateCanvas.width / 2, dateCanvas.height / 2);
+  dateTexture.needsUpdate = true;
+}
+
+// Lighting
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+directionalLight.position.set(30, 50, 50);
+scene.add(directionalLight);
+
+// Star background
+const starGeometry = new THREE.BufferGeometry();
+const starCount = 1000;
+const starPositions = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount * 3; i++) {
+  starPositions[i] = (Math.random() - 0.5) * 1000;
+}
+starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.8 });
+const stars = new THREE.Points(starGeometry, starMaterial);
+scene.add(stars);
+
 // --- Shooting Stars ---
+const shootingStarCount = 5;
 const shootingStars = [];
-for (let i = 0; i < 5; i++) {
-  const star = new THREE.Mesh(new THREE.SphereGeometry(0.3, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+
+for (let i = 0; i < shootingStarCount; i++) {
+  const star = new THREE.Mesh(
+    new THREE.SphereGeometry(0.3, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffffff })
+  );
   star.visible = false;
   scene.add(star);
 
-  const trail = new THREE.Line(
-    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
-    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 })
-  );
+  const trailMaterial = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.8,
+  });
+  const trailGeometry = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0, 0, 0),
+  ]);
+  const trail = new THREE.Line(trailGeometry, trailMaterial);
   trail.visible = false;
   scene.add(trail);
 
-  shootingStars.push({ star, trail, shooting: false, start: 0, startPos: new THREE.Vector3(), endPos: new THREE.Vector3(), duration: 0 });
+  shootingStars.push({
+    star,
+    trail,
+    shooting: false,
+    shootingStart: 0,
+    startPos: new THREE.Vector3(),
+    endPos: new THREE.Vector3(),
+    duration: 0,
+  });
 }
 
-function triggerShootingStar(i) {
-  const s = shootingStars[i];
-  s.shooting = true;
-  s.start = performance.now();
-  s.star.visible = s.trail.visible = true;
+function triggerShootingStar(index) {
+  const shootingStar = shootingStars[index];
+  shootingStar.shooting = true;
+  shootingStar.shootingStart = performance.now();
+  shootingStar.star.visible = true;
+  shootingStar.trail.visible = true;
+
+  const radius = 250;
+
   const theta = Math.random() * 2 * Math.PI;
   const phi = Math.acos(2 * Math.random() - 1);
-  s.startPos.setFromSphericalCoords(250, phi, theta);
-  const dir = s.startPos.clone().negate().normalize().add(new THREE.Vector3((Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4)).normalize();
-  s.endPos.copy(s.startPos).add(dir.multiplyScalar(150 + Math.random() * 150));
-  s.duration = 1000 + Math.random() * 1000;
-  s.star.position.copy(s.startPos);
+
+  shootingStar.startPos.set(
+    radius * Math.sin(phi) * Math.cos(theta),
+    radius * Math.sin(phi) * Math.sin(theta),
+    radius * Math.cos(phi)
+  );
+
+  if (shootingStar.startPos.distanceTo(camera.position) < 50) {
+    shootingStar.startPos.multiplyScalar(1.5);
+  }
+
+  const direction = shootingStar.startPos.clone().negate().normalize();
+
+  const spreadAngle = 0.4;
+  const randomOffset = new THREE.Vector3(
+    (Math.random() - 0.5) * spreadAngle,
+    (Math.random() - 0.5) * spreadAngle,
+    (Math.random() - 0.5) * spreadAngle
+  );
+  direction.add(randomOffset).normalize();
+
+  const travelDistance = 150 + Math.random() * 150;
+
+  shootingStar.endPos.copy(shootingStar.startPos).add(direction.multiplyScalar(travelDistance));
+
+  shootingStar.duration = 1000 + Math.random() * 1000;
+
+  shootingStar.star.position.copy(shootingStar.startPos);
 }
 
-function scheduleShooting(i) {
+function scheduleNextShootingStar(index) {
+  const delay = 2000 + Math.random() * 6000;
   setTimeout(() => {
-    if (!shootingStars[i].shooting) triggerShootingStar(i);
-    scheduleShooting(i);
-  }, 2000 + Math.random() * 6000);
+    if (!shootingStars[index].shooting) {
+      triggerShootingStar(index);
+    }
+    scheduleNextShootingStar(index);
+  }, delay);
 }
-shootingStars.forEach((_, i) => scheduleShooting(i));
 
-// --- Stars Background ---
-const starGeo = new THREE.BufferGeometry();
-const starPos = new Float32Array(3000);
-for (let i = 0; i < 3000; i++) starPos[i] = (Math.random() - 0.5) * 1000;
-starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.8 })));
+for (let i = 0; i < shootingStarCount; i++) {
+  scheduleNextShootingStar(i);
+}
 
-// --- Controls ---
+// Background Music
+const bgMusic = new Audio('source/davi-VEED.mp3');
+bgMusic.loop = true;
+bgMusic.volume = 1.0;
+
+window.addEventListener('load', () => {
+  bgMusic.play().catch(() => {
+    const resumePlayback = () => {
+      bgMusic.play().catch(console.warn);
+      document.removeEventListener('click', resumePlayback);
+    };
+    document.addEventListener('click', resumePlayback);
+  });
+});
+
+// Orbit controls
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.minDistance = 10;
+controls.maxDistance = 80;
+controls.maxPolarAngle = Math.PI / 1.6;
 
-// --- Animate ---
-function animate() {
+let lastTimerUpdate = 0;
+
+// --- Typewriter lyric effect variables ---
+let currentTypedLength = 0;
+let currentLineStartTime = 0;
+let currentLineDuration = 0;
+let currentLyricText = '';
+
+function startNewLine(text, duration, timestamp) {
+  currentLyricText = text;
+  currentTypedLength = 0;
+  currentLineStartTime = timestamp;
+  currentLineDuration = duration;
+}
+
+function updateLyricsCanvas() {
+  const timestamp = performance.now();
+
+  lyricCtx.clearRect(0, 0, lyricCanvas.width, lyricCanvas.height);
+
+  const elapsed = timestamp - currentLineStartTime;
+  const letterInterval = currentLineDuration / (currentLyricText.length || 1);
+  currentTypedLength = Math.min(currentLyricText.length, Math.floor(elapsed / letterInterval));
+
+  const textToDraw = currentLyricText.substring(0, currentTypedLength);
+
+  lyricCtx.shadowColor = 'black';
+  lyricCtx.shadowBlur = 8;
+  lyricCtx.fillStyle = 'white';
+  lyricCtx.font = 'bold 80px Arial';
+  lyricCtx.textAlign = 'center';
+  lyricCtx.textBaseline = 'middle';
+
+  lyricCtx.fillText(textToDraw, lyricCanvas.width / 2, lyricCanvas.height / 2);
+
+  lyricTexture.needsUpdate = true;
+}
+
+function animate(time = 0) {
   requestAnimationFrame(animate);
 
-  orbitGroups.forEach(obj => obj.group.rotation.y += obj.speed);
+  marsGroup.rotation.y += 0.001;
+  controls.update();
 
-  earthImageGroup.children.forEach((plane) => {
-    plane.userData.orbitAngle += plane.userData.orbitSpeed;
-    plane.position.set(
-      Math.cos(plane.userData.orbitAngle) * plane.userData.orbitRadius,
-      plane.userData.height,
-      Math.sin(plane.userData.orbitAngle) * plane.userData.orbitRadius
-    );
-    plane.lookAt(earth.position);
-  });
+  if (time - lastTimerUpdate > 500) {
+    updateTimerTexture();
+    lastTimerUpdate = time;
+  }
 
+  datePlane.lookAt(camera.position);
+  lyricPlane.lookAt(camera.position);
+
+  if (!bgMusic.paused) {
+    // Loop time based on lyrics total duration
+    let loopedTime = bgMusic.currentTime % lyricsTotalDuration;
+
+    // Initialize lyric index if not yet
+    if (lyricPlane.userData.currentIndex === undefined) {
+      lyricPlane.userData.currentIndex = 0;
+      const nextTime = lyrics[1] ? lyrics[1].time : loopedTime + 2;
+      const duration = (nextTime - lyrics[0].time) * 1000;
+      startNewLine(lyrics[0].text, duration, performance.now());
+    }
+
+    // Reset to start if loopedTime near zero and index not zero
+    if (loopedTime < 0.2 && lyricPlane.userData.currentIndex !== 0) {
+      lyricPlane.userData.currentIndex = 0;
+      const nextTime = lyrics[1] ? lyrics[1].time : loopedTime + 2;
+      const duration = (nextTime - lyrics[0].time) * 1000;
+      startNewLine(lyrics[0].text, duration, performance.now());
+    }
+
+    let currentIndex = lyricPlane.userData.currentIndex;
+
+    // Advance index while loopedTime passes next lyric time
+    while (currentIndex + 1 < lyrics.length && loopedTime >= lyrics[currentIndex + 1].time) {
+      currentIndex++;
+    }
+
+    if (currentIndex !== lyricPlane.userData.currentIndex) {
+      lyricPlane.userData.currentIndex = currentIndex;
+      const nextTime = lyrics[currentIndex + 1] ? lyrics[currentIndex + 1].time : loopedTime + 2;
+      const duration = (nextTime - lyrics[currentIndex].time) * 1000;
+      startNewLine(lyrics[currentIndex].text, duration, performance.now());
+    }
+  }
+
+  updateLyricsCanvas();
+
+  // Update shooting stars
   const now = performance.now();
-  shootingStars.forEach(s => {
-    if (s.shooting) {
-      const t = (now - s.start) / s.duration;
+  const cameraDistance = camera.position.length();
+
+  shootingStars.forEach((obj) => {
+    if (obj.shooting) {
+      const elapsed = now - obj.shootingStart;
+      const t = elapsed / obj.duration;
       if (t >= 1) {
-        s.shooting = s.star.visible = s.trail.visible = false;
+        obj.star.visible = false;
+        obj.trail.visible = false;
+        obj.shooting = false;
       } else {
-        const pos = new THREE.Vector3().lerpVectors(s.startPos, s.endPos, t);
-        s.star.position.copy(pos);
-        const trailStart = pos.clone().lerp(s.startPos, 0.3);
-        s.trail.geometry.setFromPoints([trailStart, pos]);
+        const currentPos = new THREE.Vector3().lerpVectors(obj.startPos, obj.endPos, t);
+        obj.star.position.copy(currentPos);
+
+        const scale = THREE.MathUtils.clamp(cameraDistance / 30, 0.5, 3);
+        obj.star.scale.set(scale, scale, scale);
+
+        const trailEnd = currentPos.clone();
+        const trailStart = currentPos.clone().lerp(obj.startPos, 0.3);
+        obj.trail.geometry.setFromPoints([trailStart, trailEnd]);
+
+        obj.trail.visible = true;
+        obj.star.visible = true;
       }
+    } else {
+      obj.star.visible = false;
+      obj.trail.visible = false;
     }
   });
 
-  controls.update();
   renderer.render(scene, camera);
 }
+
 animate();
 
-// --- Resize ---
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-// --- Music ---
-const bgMusic = new Audio('source/davi-VEED.mp3');
-bgMusic.loop = true;
-bgMusic.volume = 1.0;
-window.addEventListener('load', () => {
-  bgMusic.play().catch(() => {
-    const resume = () => {
-      bgMusic.play();
-      document.removeEventListener('click', resume);
-    };
-    document.addEventListener('click', resume);
-  });
 });
