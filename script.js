@@ -17,14 +17,21 @@ document.body.appendChild(renderer.domElement);
 let texturesLoaded = false;
 let audioLoaded = false;
 
+const bgMusic = new Audio('source/davi-VEED.mp3');
+bgMusic.loop = true;
+bgMusic.volume = 1.0;
+
+// Function to hide spinner and then play music
 function tryHideSpinner() {
   if (texturesLoaded && audioLoaded) {
-    const spinner = document.getElementById('loading-spinner');
-    if (spinner) spinner.style.display = 'none';
+    const spinner = document.querySelector('#loading-spinner .spinner');
+    const button = document.getElementById('start-button');
+    if (button) button.style.display = 'block';
   }
 }
 
-// Loading manager for all textures
+
+// Texture loading manager
 const loadingManager = new THREE.LoadingManager();
 loadingManager.onLoad = () => {
   texturesLoaded = true;
@@ -33,23 +40,19 @@ loadingManager.onLoad = () => {
 
 const loader = new THREE.TextureLoader(loadingManager);
 
-// Background music preload
-const bgMusic = new Audio('source/davi-VEED.mp3');
-bgMusic.loop = true;
-bgMusic.volume = 1.0;
+// Preload music
 bgMusic.addEventListener('canplaythrough', () => {
   audioLoaded = true;
-  tryHideSpinner();
-
-  bgMusic.play().catch(() => {
-    const resumePlayback = () => {
-      bgMusic.play().catch(console.warn);
-      document.removeEventListener('click', resumePlayback);
-    };
-    document.addEventListener('click', resumePlayback);
-  });
+  tryHideSpinner(); // Will only play after spinner is hidden
 });
 bgMusic.load();
+document.getElementById('start-button').addEventListener('click', () => {
+  const loadingScreen = document.getElementById('loading-spinner');
+  loadingScreen.style.display = 'none'; // Hide loading overlay
+
+  bgMusic.play().catch(console.warn); // Start music
+});
+
 
 // Group for Earth and all children
 const marsGroup = new THREE.Group();
